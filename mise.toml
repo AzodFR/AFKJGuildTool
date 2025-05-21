@@ -1,0 +1,5 @@
+[tools]
+python = "3.13"
+
+[tasks]
+install = "python -m pip install -r requirements.txt"
