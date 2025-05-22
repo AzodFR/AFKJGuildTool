@@ -3,3 +3,4 @@ python = "3.13"
 
 [tasks]
 install = "python -m pip install -r requirements.txt"
+dep     = "python -m pip freeze"

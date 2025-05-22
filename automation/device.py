@@ -1,9 +1,14 @@
+import os
+import sys
+import easyocr
+import numpy as np
+import cv2
+
 from logging import Logger
 from ppadb.client import Client
 from typing import Any
 from subprocess import Popen, PIPE
-import os
-import sys
+
 class DeviceClient:
 
     def __init__(self, logger: Logger) -> None:
@@ -45,9 +50,50 @@ class DeviceClient:
                 self.logger.critical("Could not find connected device")
                 sys.exit(1)
             self.logger.info("Connected to: "+self.device.serial)
-            self.logger.info("Taking screenshot...")
-            result = self.device.screencap()
-            with open("screen.png", "wb") as fp:
-                fp.write(result)
-            self.logger.info("Disconnecting from: "+self.device.serial)
+        return self.device
+    
+    def get_device(self) -> Any | None:
+        return self.device
+
+    def disconnect_device(self, port=5556) -> None:
+            self.logger.info("Disconnecting from: "+ self.device.serial)
             self.adb.remote_disconnect("127.0.0.1", port)
+
+    def get_frame(self):
+        screencap = self.device.screencap()
+        img_array = np.frombuffer(screencap, dtype=np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    def click_first_user(self):
+        self.locate_and_click("assets/guild/members/power.png", x_modifier=-75)
+
+    def click_power(self):
+        self.locate_and_click("assets/guild/members/power_2.png", y_modifier=-5)
+
+    def locate_and_click(self,
+        target_path,
+        x_modifier=0,
+        y_modifier=0
+    ):
+        target = cv2.imread(target_path, cv2.IMREAD_GRAYSCALE)
+        screenshot = self.get_frame()
+        result = cv2.matchTemplate(screenshot, target, cv2.TM_CCOEFF_NORMED)
+        cv2.imwrite("debug.png", screenshot)
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+        threshold = 0.8
+        if max_val >= threshold:
+            self.logger.info(f"Found match with confidence: {max_val:.2f}")
+            h, w = target.shape[:2]
+            center_x = max_loc[0] + w // 2
+            center_y = max_loc[1] + h // 2
+
+            self.device.shell(f"input tap {center_x+x_modifier} {center_y+y_modifier}")
+        else:
+            self.logger.info("Image not found.")
+        
+
+    def ocr(self, image):
+        reader = easyocr.Reader(['fr','en'], gpu=True)
+        result = reader.readtext(image, detail=0)
+        self.logger.info(result)

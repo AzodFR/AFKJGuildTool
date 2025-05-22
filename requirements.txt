@@ -1,2 +1,6 @@
 adbutils==2.4.1
-pure-python-adb=0.3.0.dev0
+pure-python-adb==0.3.0.dev0
+PyScreeze==0.1.29
+easyocr==1.7.2
+numpy==2.2.6
+cv2==4.11.0
